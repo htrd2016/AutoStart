@@ -30,9 +30,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	char server_port[20] = "";
 
 	//minion_id,config.ini
-	if (argc<4)
+	if (argc<3)
 	{
-		printf("<exe path><minion_id><config.ini><new:0,old:1><LocalName=Local>");
+		printf("<exe path><minion_id><config.ini><LocalName=Local>");
 		return -1;
 	}
 
@@ -139,7 +139,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	Utils::killProcessFromName(L"Guardian.exe");
 	Utils::killProcessFromName(L"Client.exe");
 
-	if(wcscmp(argv[3] ,L"1") == 0)
+	//根据hostname前三位判断是否为old或new判断是新版本还是旧版本
+	if(strstr(hostName, "old") == hostName)
+	//if(wcscmp(argv[3] ,L"1") == 0)
 	{
 		strcpy_s(main_selection, 128, "MainOld");
 	}
@@ -220,10 +222,10 @@ bool setComputerName(char *newName)
 	strcat_s(cmd, 1024, newName);
 	strcat_s(cmd, 1024, "\"");
 
-	printf("%s", cmd);
+	printf("%s\n", cmd);
 
 	bool bRet = exeCmd(cmd, (char**)(&out), 1024);
-	printf("%s", out);
+	printf("%s\n", out);
 	return bRet;
 }
 
