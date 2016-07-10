@@ -12,12 +12,7 @@ bool setComputerName(char *newName);
 void reboot();
 bool runClient(char *folder, char *serverIP, char *serverPort);
 
-void test()
-{
-	char data[1024] = {"   hello!!!"};
-	Utils::trim(data);
-	printf("%s", data);
-}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	char minion_name[128];
@@ -126,7 +121,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		if(strcmp(out, hostName)!=0 && strcmp(out,hostNameTmp)!=0 )
 		{
-			/*if(true == setComputerName(hostName))
+			if(true == setComputerName(hostName))
 			{
 				printf("about to reboot!!");
 				reboot(); //÷ÿ∆Ù
@@ -136,7 +131,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			{
 				printf("error:set computer name failed!!");
 				return -1;
-			}*/
+			}
 		}
 	}
 	//printf("%s", out);
