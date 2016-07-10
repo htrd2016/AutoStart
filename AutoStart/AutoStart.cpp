@@ -176,6 +176,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			strcat_s(path, 1024, "\\");
 		}
 		runClient(path, server_ip, server_port);
+		Sleep(1);
 	}
 
 	return 0;
@@ -213,15 +214,7 @@ bool runClient(char *folder, char *serverIP, char *serverPort)
 	{
 		printf("failed delete %s", runFile);
 	}
-
-	//START /normal /D "' + process_folder + '" ' + exe_name
-	strcpy_s(cmd, 1024, "START /normal /D \"");
-	strcat_s(cmd, 1024, exeFile);
-	strcat_s(cmd, 1024, "\"");
-	printf("%s", cmd);
-	bool bRet = exeCmd(cmd, (char**)(&out), 1024);
-	printf("%s", out);
-	return bRet;
+	return WinExec(exeFile, SW_SHOWNORMAL)>31;
 }
 
 bool setComputerName(char *newName)
