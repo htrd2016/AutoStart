@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include <Windows.h>
+#include <Iphlpapi.h>
 #include "Utils.h"
 
 bool exeCmd(char *cmd, char **out, size_t maxLen);
@@ -13,7 +14,47 @@ void reboot();
 bool runClient(char *folder, char *serverIP, char *serverPort);
 
 
-int _tmain(int argc, _TCHAR* argv[])
+static char* getMAC(){
+	PIP_ADAPTER_INFO AdapterInfo;
+	DWORD dwBufLen = sizeof(AdapterInfo);
+	char *mac_addr = (char*)malloc(17);
+
+	AdapterInfo = (IP_ADAPTER_INFO *)malloc(sizeof(IP_ADAPTER_INFO));
+	if (AdapterInfo == NULL) {
+		printf("Error allocating memory needed to call GetAdaptersinfo\n");
+
+	}
+
+	// Make an initial call to GetAdaptersInfo to get the necessary size into the dwBufLen     variable
+	if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == ERROR_BUFFER_OVERFLOW) {
+
+		AdapterInfo = (IP_ADAPTER_INFO *)malloc(dwBufLen);
+		if (AdapterInfo == NULL) {
+			printf("Error allocating memory needed to call GetAdaptersinfo\n");
+		}
+	}
+
+	if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == NO_ERROR) {
+		PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;// Contains pointer to current adapter info
+		do {
+			_snprintf_s(mac_addr, 17, _TRUNCATE, "%02X%02X%02X%02X%02X%02X",
+				pAdapterInfo->Address[0], pAdapterInfo->Address[1],
+				pAdapterInfo->Address[2], pAdapterInfo->Address[3],
+				pAdapterInfo->Address[4], pAdapterInfo->Address[5]);
+			//printf("Address: %s, mac: %s\n", pAdapterInfo->IpAddressList.IpAddress.String, mac_addr);
+			return mac_addr;
+
+			//printf("\n");
+			pAdapterInfo = pAdapterInfo->Next;
+		} while (pAdapterInfo);
+	}
+	free(AdapterInfo);
+
+
+	return 0;
+}
+
+int main(int argc, char* argv[])
 {
 	char minion_name[128];
 	char ini_file[512] = "";
@@ -30,56 +71,48 @@ int _tmain(int argc, _TCHAR* argv[])
 	char server_port[20] = "";
 
 	//minion_id,config.ini
-	if (argc<3)
-	{
-		printf("<exe path><minion_id><config.ini><LocalName=Local>");
-		return -1;
-	}
 
-	strcpy_s(minion_name, 128, Utils::wstringTostring(argv[1]).c_str());
-	strcpy_s(ini_file, 512, Utils::wstringTostring(argv[2]).c_str());
+	char* mac = getMAC();
+	strcpy_s(minion_name, 128, mac);
+	free(mac);
+	strcpy_s(ini_file, 512, "C:\\AutoStart\\config.ini");
 
-	if (argc>=5)
-	{
-		strcpy_s(local_name, 512, Utils::wstringTostring(argv[4]).c_str());
-	}
-
-    DWORD len = GetPrivateProfileStringA(minion_name, "hostname", "", hostName, 512, ini_file);
+    DWORD len = GetPrivateProfileString(minion_name, "hostname", "", hostName, 512, ini_file);
 	if(len<=0)
 	{
 		printf("len=%d, hostname=%s %d\n", len, hostName, GetLastError());
 		return -1;
 	}
 
-	len = GetPrivateProfileStringA(minion_name, "ip", "", ip, 64, ini_file);
+	len = GetPrivateProfileString(minion_name, "ip", "", ip, 64, ini_file);
 	if(len<=0)
 	{
 		printf("len=%d, ip=%s %d\n", len, ip, GetLastError());
 		return -1;
 	}
 
-	len = GetPrivateProfileStringA(minion_name, "mask", "", mask, 64, ini_file);
+	len = GetPrivateProfileString(minion_name, "mask", "", mask, 64, ini_file);
 	if(len<=0)
 	{
 		printf("len=%d, %s %d\n", len, mask, GetLastError());
 		return -1;
 	}
 
-	len = GetPrivateProfileStringA(minion_name, "gateway", "", gateway, 64, ini_file);
+	len = GetPrivateProfileString(minion_name, "gateway", "", gateway, 64, ini_file);
     /*if(len<=0)
 	{
 		printf("len=%d, %s %d\n", len, gateway, GetLastError());
 		return -1;
 	}*/
 
-	len = GetPrivateProfileStringA(minion_name, "dns", "", dns, 64, ini_file);
+	len = GetPrivateProfileString(minion_name, "dns", "", dns, 64, ini_file);
     /*if(len<=0)
 	{
 		printf("len=%d, %s %d\n", len, dns, GetLastError());
 		return -1;
 	}*/
 
-	len = GetPrivateProfileStringA(minion_name, "to_run_app_count", "", to_run_app_count, 10, ini_file);
+	len = GetPrivateProfileString(minion_name, "to_run_app_count", "", to_run_app_count, 10, ini_file);
     if(len<0)
 	{
 		printf("len=%d, %s %d\n", len, to_run_app_count, GetLastError());
@@ -93,18 +126,23 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -1;
 	}
 
+
+	printf("mac %s, hostname %s, ip %s, mask %s, gateway %s, dns %s, app %d\n",
+		minion_name, hostName, ip, mask, gateway, dns, int_to_run_app_count);
+
 	if(false == setIP(ip, mask, gateway, local_name))
 	{
 		printf("error:set ip failed!!!");
 		return -1;
 	}
 
-	char cmd[1024] = {"netsh interface IP set dns \""};
-	strcat_s(cmd, 1024, local_name);
-	strcat_s(cmd, 1024, "\" static ");
-	strcat_s(cmd, dns);
+	char cmd[1024];
+	_snprintf_s(cmd, 1024, _TRUNCATE,
+		"netsh interface IP set dns \"%s\" static %s",
+		local_name, dns);
 	
 	char out[1024];
+	DWORD dwlen = sizeof(out);
 	if (false == exeCmd(cmd, (char**)(&out), sizeof(out)))
 	{
 		char err[1024] = "error:";
@@ -113,13 +151,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -1;
 	}
 	
-	if(true == getComputerName((char**)(&out), sizeof(out)))
+	if(TRUE == GetComputerName(out, &dwlen))
 	{
-		char hostNameTmp[50] = "";
-		strcpy_s(hostNameTmp, 50, hostName);
-		strcat_s(hostNameTmp, 50, "\r\n");
-
-		if(strcmp(out, hostName)!=0 && strcmp(out,hostNameTmp)!=0 )
+		printf("Host Name is %s and %s\n", out, hostName);
+		if(_stricmp(out, hostName) != 0)
 		{
 			if(true == setComputerName(hostName))
 			{
@@ -136,27 +171,25 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	//printf("%s", out);
 
-	Utils::killProcessFromName(L"Guardian.exe");
-	Utils::killProcessFromName(L"Client.exe");
+	Utils::killProcessFromName("Guardian.exe");
+	Utils::killProcessFromName("Client.exe");
 
-	//根据hostname前三位判断是否为old或new判断是新版本还是旧版本
-	if(strstr(hostName, "old") == hostName)
-	//if(wcscmp(argv[3] ,L"1") == 0)
-	{
-		strcpy_s(main_selection, 128, "MainOld");
-	}
-	else
+	if ((strncmp(hostName, "new", 3) == 0) || (strncmp(hostName, "NEW", 3) == 0))
 	{
 		strcpy_s(main_selection, 128, "MainNew");
 	}
+	else
+	{
+		strcpy_s(main_selection, 128, "MainOld");
+	}
 
-	printf("%s", main_selection);
+	printf("main_selection %s\n", main_selection);
 
-	len = GetPrivateProfileStringA(main_selection, "host", "", server_ip, 64, ini_file);
-    printf("len=%d, %s %d\n", len, server_ip, GetLastError());
+	len = GetPrivateProfileString(main_selection, "host", "", server_ip, 64, ini_file);
+    printf("len=%d, ip: %s %d\n", len, server_ip, GetLastError());
 
-	len = GetPrivateProfileStringA(main_selection, "port", "", server_port, 20, ini_file);
-    printf("len=%d, %s %d\n", len, server_port, GetLastError());
+	len = GetPrivateProfileString(main_selection, "port", "", server_port, 20, ini_file);
+    printf("len=%d, port: %s %d\n", len, server_port, GetLastError());
 
 	for(int i=1;i<=int_to_run_app_count;i++)
 	{
@@ -173,7 +206,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			strcat_s(path, 1024, "\\");
 		}
 		runClient(path, server_ip, server_port);
-		Sleep(1);
+		Sleep(10000);
 	}
 
 	return 0;
@@ -196,18 +229,18 @@ bool runClient(char *folder, char *serverIP, char *serverPort)
 	strcat_s(exeFile, 1024, "Client.exe");
 
 	printf("%s\n%s", webIni, runFile);
-	if(FALSE == WritePrivateProfileStringA("Main", "host", serverIP, webIni))
+	if(FALSE == WritePrivateProfileString("Main", "host", serverIP, webIni))
 	{
 		printf("error:write %s", webIni);
 		return false;
 	}
-	if(FALSE == WritePrivateProfileStringA("Main", "port", serverPort, webIni))
+	if(FALSE == WritePrivateProfileString("Main", "port", serverPort, webIni))
 	{
 		printf("error:write %s", webIni);
 		return false;
 	}
 
-	if(FALSE == ::DeleteFileA(runFile))
+	if(FALSE == ::DeleteFile(runFile))
 	{
 		printf("failed delete %s", runFile);
 	}
@@ -222,19 +255,19 @@ bool setComputerName(char *newName)
 	strcat_s(cmd, 1024, newName);
 	strcat_s(cmd, 1024, "\"");
 
-	printf("%s\n", cmd);
+	printf("%s", cmd);
 
 	bool bRet = exeCmd(cmd, (char**)(&out), 1024);
-	printf("%s\n", out);
+	printf("%s", out);
 	return bRet;
 }
 
-bool getComputerName(char **out, size_t maxLen)
-{
-	bool bRet = exeCmd("hostname", out, maxLen);
-	char *p = (char*)out;
-	return bRet;
-}
+//bool getComputerName(char **out, size_t maxLen)
+//{
+//	bool bRet = exeCmd("hostname", out, maxLen);
+//	char *p = (char*)out;
+//	return bRet;
+//}
 
 bool setIP(char *ip, char *mask, char *gateway, char* name)
 {
@@ -242,28 +275,18 @@ bool setIP(char *ip, char *mask, char *gateway, char* name)
 	strcpy_s(szGateWay, 512, gateway );
 	Utils::trim(szGateWay);
 	if(strlen(szGateWay) == 0)
-	{
 		strcpy_s(szGateWay, 512, "none");
-	}
 	else
-	{
-		strcpy_s(szGateWay, 512, "gateway=");
-		strcat_s(szGateWay, 512, gateway);
-		strcat_s(szGateWay, 512, " gwmetric=1");
-	}
+		_snprintf_s(szGateWay, 512, "gateway= %s gwmetric=1", szGateWay);
 
 	//param = 'netsh interface ip set address name="'+name+'" source=static addr='+ ip +' mask='+mask+' ' + gateway
 	char cmd[1024] = {0};
-	strcpy_s(cmd, 1024, "netsh interface ip set address name=\"");
-	strcat_s(cmd, 1024, name);
-	strcat_s(cmd, 1024, "\" source=static addr=");
-	strcat_s(cmd, 1024, ip);
-	strcat_s(cmd, 1024, " mask=");
-	strcat_s(cmd, 1024, mask);
-	strcat_s(cmd, 1024, " ");
-	strcat_s(cmd, 1024, szGateWay);
+	_snprintf_s(cmd, 1024, _TRUNCATE, "netsh interface ip set address name=\"%s\""
+		" source=static addr=\"%s\""
+		" mask=\"%s\""
+		" %s", name, ip, mask, szGateWay);
 
-	printf("%s", cmd);
+	printf("SetIP: %s\n", cmd);
 
 	char out[1024];
 	return exeCmd(cmd, (char**)(&out), sizeof(out));

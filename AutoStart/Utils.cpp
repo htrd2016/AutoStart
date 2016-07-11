@@ -25,43 +25,9 @@ void Utils::trim(char * str)
     }
     str[i+1] = 0 ;
 }
-
-wstring Utils::stringTowstring(const string &strSrc)
-{
-	wstring wstr = _T("");
-	int nLen = (int)strSrc.length();    
-	wstr.resize(nLen, _T(' '));
-
-	int nResult = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)strSrc.c_str(), nLen, (LPWSTR)wstr.c_str(), nLen);
-	if (nResult == 0)
-	{
-		return _T("");
-	}
-
-	wstring strRet = wstr;
-	wstr.erase(wstr.begin(),wstr.end());
-	return strRet;
-}
-
-string Utils::wstringTostring(const wstring &wstrSrc)
-{
-	size_t size;
-	string curLocale = setlocale(LC_ALL, NULL);
-	setlocale(LC_ALL, "chs"); 
-	const wchar_t* _Source = wstrSrc.c_str();
-	size_t _Dsize = 2 * wstrSrc.size() + 1;
-	char *_Dest = new char[_Dsize];
-	memset(_Dest, 0, _Dsize);
-	wcstombs_s(&size,_Dest, _Dsize, _Source, _Dsize);
-	std::string result = _Dest;
-	delete []_Dest;
-	setlocale(LC_ALL, curLocale.c_str());
-	return result;
-}
-
 //结束进程
 //kill进程from名字
-bool Utils::killProcessFromName(const wstring &strProcessName)
+bool Utils::killProcessFromName(const string &strProcessName)
 {
 	bool bRet = FALSE;
     HANDLE hSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -71,12 +37,12 @@ bool Utils::killProcessFromName(const wstring &strProcessName)
     {
         return bRet;
     }
-	wstring strProcessNameTemp = strProcessName;
+	string strProcessNameTemp = strProcessName;
 	transform(strProcessNameTemp.begin(), strProcessNameTemp.end(), strProcessNameTemp.begin(), ::tolower);
 
     while (Process32Next(hSnapShot, &pe))
     {
-        wstring scTmp = pe.szExeFile;
+        string scTmp = pe.szExeFile;
 		transform(scTmp.begin(), scTmp.end(), scTmp.begin(), ::tolower);
 		if (!scTmp.compare(strProcessNameTemp))
         {
