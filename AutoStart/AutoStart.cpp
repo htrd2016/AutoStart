@@ -1,4 +1,4 @@
-// AutoStart.cpp : ¶¨Òå¿ØÖÆÌ¨Ó¦ÓÃ³ÌĞòµÄÈë¿Úµã¡£
+// AutoStart.cpp : å®šä¹‰æ§åˆ¶å°åº”ç”¨ç¨‹åºçš„å…¥å£ç‚¹ã€‚
 //
 
 #include "stdafx.h"
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 			if(true == setComputerName(hostName))
 			{
 				printf("about to reboot!!");
-				reboot(); //ÖØÆô
+				reboot(); //é‡å¯
 				return 0;
 			}
 			else
@@ -304,18 +304,18 @@ bool exeCmd(char *cmd, char** out, size_t maxLen)
 	{  
 		return false;  
 	}   
-	char command[1024];    //³¤´ï1KµÄÃüÁîĞĞ£¬¹»ÓÃÁË°É  
+	char command[1024];    //é•¿è¾¾1Kçš„å‘½ä»¤è¡Œï¼Œå¤Ÿç”¨äº†å§  
 	strcpy_s(command,1024,"cmd.exe /C ");  
 	strcat_s(command,1024,cmd);  
 	STARTUPINFOA si;  
 	PROCESS_INFORMATION pi;   
 	si.cb = sizeof(STARTUPINFO);  
 	GetStartupInfoA(&si);   
-	si.hStdError = hWrite;            //°Ñ´´½¨½ø³ÌµÄ±ê×¼´íÎóÊä³öÖØ¶¨Ïòµ½¹ÜµÀÊäÈë  
-	si.hStdOutput = hWrite;           //°Ñ´´½¨½ø³ÌµÄ±ê×¼Êä³öÖØ¶¨Ïòµ½¹ÜµÀÊäÈë  
+	si.hStdError = hWrite;            //æŠŠåˆ›å»ºè¿›ç¨‹çš„æ ‡å‡†é”™è¯¯è¾“å‡ºé‡å®šå‘åˆ°ç®¡é“è¾“å…¥  
+	si.hStdOutput = hWrite;           //æŠŠåˆ›å»ºè¿›ç¨‹çš„æ ‡å‡†è¾“å‡ºé‡å®šå‘åˆ°ç®¡é“è¾“å…¥  
 	si.wShowWindow = SW_HIDE;  
 	si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;  
-	//¹Ø¼ü²½Öè£¬CreateProcessº¯Êı²ÎÊıÒâÒåÇë²éÔÄMSDN  
+	//å…³é”®æ­¥éª¤ï¼ŒCreateProcesså‡½æ•°å‚æ•°æ„ä¹‰è¯·æŸ¥é˜…MSDN  
 	if (!CreateProcessA(NULL, command,NULL,NULL,TRUE,NULL,NULL,NULL,&si,&pi))   
 	{  
 		CloseHandle(hWrite);  
@@ -323,15 +323,16 @@ bool exeCmd(char *cmd, char** out, size_t maxLen)
 		return FALSE;  
 	}  
 	CloseHandle(hWrite);  
-	//char buffer[4096] = {0};          //ÓÃ4KµÄ¿Õ¼äÀ´´æ´¢Êä³öµÄÄÚÈİ£¬Ö»Òª²»ÊÇÏÔÊ¾ÎÄ¼şÄÚÈİ£¬Ò»°ãÇé¿öÏÂÊÇ¹»ÓÃÁË¡£  
+	//char buffer[4096] = {0};          //ç”¨4Kçš„ç©ºé—´æ¥å­˜å‚¨è¾“å‡ºçš„å†…å®¹ï¼Œåªè¦ä¸æ˜¯æ˜¾ç¤ºæ–‡ä»¶å†…å®¹ï¼Œä¸€èˆ¬æƒ…å†µä¸‹æ˜¯å¤Ÿç”¨äº†ã€‚  
 	DWORD bytesRead;   
 	int nLen = 0;
 	while (true)   
 	{  
 		if (ReadFile(hRead,out+nLen,maxLen-nLen,&bytesRead,NULL) == NULL)  
 			break;
+		nLen += bytesRead;
 	}  
-	nLen += bytesRead;
+	
 	CloseHandle(hRead);   
 	return true;  
 }  
@@ -340,10 +341,10 @@ void reboot()
 {
 	OSVERSIONINFO osv;
     osv.dwOSVersionInfoSize = sizeof OSVERSIONINFO;
-    GetVersionEx(&osv);//»ñÈ¡²Ù×÷ÏµÍ³µÄ°æ±¾
+    GetVersionEx(&osv);//è·å–æ“ä½œç³»ç»Ÿçš„ç‰ˆæœ¬
     if(VER_PLATFORM_WIN32_NT == osv.dwPlatformId)
     {
-        // Èç¹ûÔËĞĞÔÚNT/XPÆ½Ì¨£¬±ØĞëÏÈÈ¡µÃÈ¨ÏŞ
+        // å¦‚æœè¿è¡Œåœ¨NT/XPå¹³å°ï¼Œå¿…é¡»å…ˆå–å¾—æƒé™
         HANDLE hProcess, hToken;
         TOKEN_PRIVILEGES Privileges;
         LUID luid;
@@ -355,5 +356,5 @@ void reboot()
         Privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
         AdjustTokenPrivileges(hToken, FALSE, &Privileges, NULL, NULL, NULL);
     }
-    ExitWindowsEx(EWX_REBOOT,0);//ÖØĞÂÆô¶¯¼ÆËã»ú
+    ExitWindowsEx(EWX_REBOOT,0);//é‡æ–°å¯åŠ¨è®¡ç®—æœº
 }
